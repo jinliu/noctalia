@@ -22,7 +22,7 @@ void FavoritesStore::add(std::string_view providerId, std::string_view resultId)
   if (getPos(providerId, resultId) > 0) {
     return;
   }
-  m_favorites[std::string(providerId)].push_back(std::string(resultId));
+  m_favorites[std::string(providerId)].emplace_back(resultId);
   rebuildIndex(providerId);
   save();
 }
@@ -32,7 +32,7 @@ void FavoritesStore::remove(std::string_view providerId, std::string_view result
     return;
   }
   auto& favorites = m_favorites[std::string(providerId)];
-  favorites.erase(std::remove(favorites.begin(), favorites.end(), std::string(resultId)), favorites.end());
+  std::erase(favorites, resultId);
   if (favorites.empty()) {
     m_favorites.erase(std::string(providerId));
     m_favoritesIndex.erase(std::string(providerId));
@@ -44,7 +44,7 @@ void FavoritesStore::remove(std::string_view providerId, std::string_view result
 
 void FavoritesStore::moveUp(std::string_view providerId, std::string_view resultId) {
   auto& favorites = m_favorites[std::string(providerId)];
-  auto it = std::find(favorites.begin(), favorites.end(), std::string(resultId));
+  auto it = std::ranges::find(favorites, resultId);
   if (it != favorites.end() && it != favorites.begin()) {
     std::swap(*it, *(it - 1));
     rebuildIndex(providerId);
@@ -54,7 +54,7 @@ void FavoritesStore::moveUp(std::string_view providerId, std::string_view result
 
 void FavoritesStore::moveDown(std::string_view providerId, std::string_view resultId) {
   auto& favorites = m_favorites[std::string(providerId)];
-  auto it = std::find(favorites.begin(), favorites.end(), std::string(resultId));
+  auto it = std::ranges::find(favorites, resultId);
   if (it != favorites.end() && (it + 1) != favorites.end()) {
     std::swap(*it, *(it + 1));
     rebuildIndex(providerId);
