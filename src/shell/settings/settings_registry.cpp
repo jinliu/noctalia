@@ -1234,6 +1234,11 @@ namespace settings {
         ToggleSetting{cfg.shell.launcher.sortByUsage}, "launcher sort usage recently used frequency"
     ));
     entries.push_back(makeEntry(
+        SettingsSection::Launcher, "launcher", tr("settings.schema.panels.launcher-enable-favorites.label"),
+        tr("settings.schema.panels.launcher-enable-favorites.description"), {"shell", "launcher", "enable_favorites"},
+        ToggleSetting{cfg.shell.launcher.enableFavorites}, "launcher enable favorites"
+    ));
+    entries.push_back(makeEntry(
         SettingsSection::Launcher, "launcher", tr("settings.schema.panels.launcher-currency-exchange.label"),
         tr("settings.schema.panels.launcher-currency-exchange.description"),
         {"shell", "launcher", "fetch_exchange_rates"}, ToggleSetting{cfg.shell.launcher.fetchExchangeRates},

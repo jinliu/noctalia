@@ -1301,6 +1301,7 @@ namespace noctalia::config::schema {
           field(&ShellConfig::LauncherConfig::compact, "compact"),
           field(&ShellConfig::LauncherConfig::appGrid, "app_grid"),
           field(&ShellConfig::LauncherConfig::sortByUsage, "sort_by_usage"),
+          field(&ShellConfig::LauncherConfig::enableFavorites, "enable_favorites"),
           field(&ShellConfig::LauncherConfig::fetchExchangeRates, "fetch_exchange_rates"),
           field(&ShellConfig::LauncherConfig::providerPrefix, "provider_prefix"),
           enumField(&ShellConfig::LauncherConfig::autoPaste, "auto_paste", kClipboardAutoPasteModes),

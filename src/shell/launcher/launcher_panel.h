@@ -1,5 +1,6 @@
 #pragma once
 
+#include "launcher/favorites_store.h"
 #include "launcher/launcher_provider.h"
 #include "launcher/usage_tracker.h"
 #include "shell/panel/panel.h"
@@ -88,7 +89,7 @@ private:
   void applyProviderConfig(LauncherProvider& provider) const;
   void finishActivation(LauncherProvider& provider, const std::string& resultId, bool copied);
   [[nodiscard]] std::vector<LauncherResult> providerOverviewResults(std::string_view text) const;
-  [[nodiscard]] bool openAppActionsMenu(std::size_t index, float anchorX, float anchorY);
+  [[nodiscard]] bool openActionsMenu(std::size_t index, float anchorX, float anchorY);
   void rebuildCategoryFilter(const std::vector<LauncherCategory>& categories);
   void setCategoryFilterVisible(bool visible);
   void setActiveCategorySlot(std::size_t slotIndex);
@@ -99,11 +100,13 @@ private:
   void refreshLauncherAppIconColorization();
   void updateLauncherGridMetrics(Renderer& renderer);
   [[nodiscard]] bool shouldTrackUsage() const;
+  [[nodiscard]] bool favoritesEnabled() const;
 
   std::vector<std::unique_ptr<LauncherProvider>> m_providers;
   std::vector<LauncherResult> m_results;
   std::vector<LauncherResult> m_allResults;
   UsageTracker m_usageTracker;
+  FavoritesStore m_favoritesStore;
   IconResolver m_iconResolver;
 
   Flex* m_container = nullptr;
@@ -119,6 +122,7 @@ private:
   std::unique_ptr<LauncherAppGridAdapter> m_gridAdapter;
 
   std::string m_query;
+  std::string m_queryText; // Query excluding the launcher prefix
   std::string m_scopedProviderId;
   std::string m_scopedPlaceholder;
   ActiveCategoryType m_activeCategoryType = All;

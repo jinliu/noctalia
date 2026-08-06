@@ -102,8 +102,13 @@ namespace {
     return id;
   }
 
-  void sortResultsByScore(std::vector<LauncherResult>& results) {
-    std::ranges::stable_sort(results, std::ranges::greater{}, &LauncherResult::score);
+  void sortResultsByFavoriteAndScore(std::vector<LauncherResult>& results) {
+    std::ranges::stable_sort(results, [](const LauncherResult& a, const LauncherResult& b) {
+      if (a.favoriteIndex != b.favoriteIndex) {
+        return a.favoriteIndex > b.favoriteIndex;
+      }
+      return a.score > b.score;
+    });
   }
 
   struct LauncherListStyle {
@@ -272,6 +277,15 @@ namespace {
               })
           )
       );
+
+      m_row->addChild(
+          ui::glyph({
+              .out = &m_star,
+              .glyph = "star-filled",
+              .glyphSize = Style::fontSizeBody * m_style.scale,
+              .visible = false,
+          })
+      );
     }
 
     void setListStyle(LauncherListStyle style) { m_style = style; }
@@ -280,6 +294,7 @@ namespace {
     bind(Renderer& renderer, const LauncherResult& result, float width, float height, bool selected, bool hovered) {
       m_selected = selected;
       m_hovered = hovered;
+      m_favorite = result.favoriteIndex > 0;
       m_iconPath = result.iconPath;
       m_fallbackGlyph = result.glyphName.empty() ? "app-window" : result.glyphName;
       const float iconSize = launcherIconSize(m_style);
@@ -339,6 +354,8 @@ namespace {
         m_subtitle->setMaxWidth(textWidth);
       }
 
+      m_star->setVisible(m_favorite);
+
       applyVisualState();
     }
 
@@ -392,12 +409,17 @@ namespace {
       m_glyph->setColor(foreground);
       m_title->setColor(foreground);
       m_subtitle->setColor(mutedForeground);
+
+      if (m_favorite) {
+        m_star->setColor(colorSpecFromRole((m_selected || m_hovered) ? ColorRole::OnSurface : ColorRole::Primary));
+      }
     }
 
     LauncherListStyle m_style{};
     float m_rowHeight = 0.0F;
     bool m_selected = false;
     bool m_hovered = false;
+    bool m_favorite = false;
     Flex* m_row = nullptr;
     Label* m_badgeLabel = nullptr;
     Image* m_image = nullptr;
@@ -405,6 +427,7 @@ namespace {
     Flex* m_textCol = nullptr;
     Label* m_title = nullptr;
     Label* m_subtitle = nullptr;
+    Glyph* m_star = nullptr;
     AsyncTextureCache* m_asyncTextures = nullptr;
     std::string m_iconPath;
     std::string m_fallbackGlyph;
@@ -468,6 +491,15 @@ namespace {
               .configure = [](Label& label) { label.setTextAlign(TextAlign::Center); },
           })
       );
+
+      addChild(
+          ui::glyph({
+              .out = &m_star,
+              .glyph = "star-filled",
+              .glyphSize = Style::fontSizeBody * m_style.scale,
+              .visible = false,
+          })
+      );
     }
 
     void setListStyle(LauncherListStyle style) { m_style = style; }
@@ -476,6 +508,7 @@ namespace {
     bind(Renderer& renderer, const LauncherResult& result, float width, float height, bool selected, bool hovered) {
       m_selected = selected;
       m_hovered = hovered;
+      m_favorite = result.favoriteIndex > 0;
       m_iconPath = result.iconPath;
       m_fallbackGlyph = result.glyphName.empty() ? "app-window" : result.glyphName;
       const float iconSize = launcherIconSize(m_style);
@@ -513,6 +546,8 @@ namespace {
       m_title->setText(singleLinePreview(result.title));
       m_title->setMaxWidth(textWidth);
 
+      m_star->setVisible(m_favorite);
+
       applyVisualState();
     }
 
@@ -546,6 +581,10 @@ namespace {
       if (m_style.showIcons && !m_iconPath.empty()) {
         (void)refreshAsyncIcon(renderer);
       }
+      if (m_favorite) {
+        const float gap = Style::spaceXs * m_style.scale;
+        m_star->setPosition(width() - m_star->width() - gap, gap);
+      }
       Node::doLayout(renderer);
     }
 
@@ -564,15 +603,21 @@ namespace {
       const ColorSpec foreground = colorSpecFromRole(active ? activeRole : ColorRole::OnSurface);
       m_glyph->setColor(foreground);
       m_title->setColor(foreground);
+
+      if (m_favorite) {
+        m_star->setColor(colorSpecFromRole((m_selected || m_hovered) ? ColorRole::OnSurface : ColorRole::Primary));
+      }
     }
 
     LauncherListStyle m_style{};
     bool m_selected = false;
     bool m_hovered = false;
+    bool m_favorite = false;
     Flex* m_col = nullptr;
     Image* m_image = nullptr;
     Glyph* m_glyph = nullptr;
     Label* m_title = nullptr;
+    Glyph* m_star = nullptr;
     AsyncTextureCache* m_asyncTextures = nullptr;
     std::string m_iconPath;
     std::string m_fallbackGlyph;
@@ -818,7 +863,7 @@ void LauncherPanel::create() {
   m_gridAdapter->setResults(&m_results);
   const auto onActivate = [this](std::size_t index) { activateAt(index); };
   const auto onSecondaryActivate = [this](std::size_t index, float ax, float ay) {
-    (void)openAppActionsMenu(index, ax, ay);
+    (void)openActionsMenu(index, ax, ay);
   };
   m_listAdapter->setOnActivate(onActivate);
   m_listAdapter->setOnSecondaryActivate(onSecondaryActivate);
@@ -1152,6 +1197,10 @@ void LauncherPanel::syncUsageTrackingState() {
   }
 }
 
+bool LauncherPanel::favoritesEnabled() const {
+  return m_config != nullptr && m_config->config().shell.launcher.enableFavorites;
+}
+
 void LauncherPanel::reapplyCurrentQuery() {
   std::string selectedProvider;
   std::string selectedId;
@@ -1227,6 +1276,7 @@ void LauncherPanel::onInputChanged(const std::string& text) {
   }
 
   m_query = text;
+  m_queryText = text;
   m_allResults.clear();
 
   std::vector<LauncherCategory> newCategories;
@@ -1237,17 +1287,16 @@ void LauncherPanel::onInputChanged(const std::string& text) {
       if (provider->id() != m_scopedProviderId) {
         continue;
       }
-      m_allResults = provider->query(text);
+      m_allResults = provider->query(m_queryText);
       for (auto& result : m_allResults) {
         result.providerId = provider->id();
       }
-      sortResultsByScore(m_allResults);
+      sortResultsByFavoriteAndScore(m_allResults);
       break;
     }
   } else {
     // Route query to providers
     LauncherProvider* activeProvider = nullptr;
-    std::string_view queryText = text;
 
     // Check for prefix match (longest first)
     for (auto& provider : m_providers) {
@@ -1259,32 +1308,35 @@ void LauncherPanel::onInputChanged(const std::string& text) {
           && std::string_view(text).starts_with(prefix)
           && (activeProvider == nullptr || prefix.size() > activeProvider->prefix().size())) {
         activeProvider = provider.get();
-        queryText = std::string_view(text).substr(prefix.size());
+        m_queryText = std::string_view(text).substr(prefix.size());
       }
     }
     // Trim leading space after prefix
-    if (activeProvider != nullptr && !queryText.empty() && queryText.front() == ' ') {
-      queryText = queryText.substr(1);
+    if (activeProvider != nullptr && !m_queryText.empty() && m_queryText.front() == ' ') {
+      m_queryText = m_queryText.substr(1);
     }
 
-    const bool typedQuery = !queryText.empty();
+    const bool typedQuery = !m_queryText.empty();
+    const bool enableFavorites = favoritesEnabled();
     const bool sortByUsage = m_config != nullptr && m_config->config().shell.launcher.sortByUsage;
 
-    auto applyUsageBoost = [&](std::vector<LauncherResult>& results, const LauncherProvider& provider) {
-      if (!sortByUsage) {
-        return;
-      }
+    auto applyFavoritesAndUsageBoost = [&](std::vector<LauncherResult>& results, const LauncherProvider& provider) {
       for (auto& result : results) {
-        const int usageCount = m_usageTracker.getCount(provider.id(), result.id);
-        result.score += usageBoostForScore(result.score, usageCount, typedQuery);
-        result.recentlyUsedIndex = m_usageTracker.getRecentlyUsedIndex(provider.id(), result.id);
+        if (enableFavorites) {
+          result.favoriteIndex = m_favoritesStore.getPos(provider.id(), result.id);
+        }
+        if (sortByUsage) {
+          const int usageCount = m_usageTracker.getCount(provider.id(), result.id);
+          result.score += usageBoostForScore(result.score, usageCount, typedQuery);
+          result.recentlyUsedIndex = m_usageTracker.getRecentlyUsedIndex(provider.id(), result.id);
+        }
       }
     };
 
     if (activeProvider != nullptr) {
-      m_allResults = activeProvider->queryPrefixed(queryText);
+      m_allResults = activeProvider->queryPrefixed(m_queryText);
       if (activeProvider->trackUsage()) {
-        applyUsageBoost(m_allResults, *activeProvider);
+        applyFavoritesAndUsageBoost(m_allResults, *activeProvider);
         if (sortByUsage && m_usageTracker.getRecentlyUsedCount(activeProvider->id()) > 0) {
           hasRecentlyUsed = true;
         }
@@ -1292,7 +1344,7 @@ void LauncherPanel::onInputChanged(const std::string& text) {
       for (auto& result : m_allResults) {
         result.providerId = activeProvider->id();
       }
-      sortResultsByScore(m_allResults);
+      sortResultsByFavoriteAndScore(m_allResults);
       newCategories = activeProvider->categories();
     } else if (startsWithLauncherPrefix(text)) {
       m_allResults = providerOverviewResults(text);
@@ -1301,15 +1353,15 @@ void LauncherPanel::onInputChanged(const std::string& text) {
       // Prefixed opt-in providers (e.g. Session) only contribute once the query is long enough,
       // so opening the launcher with no/short input does not flood it with their entries.
       const bool allowGlobalOptIn =
-          StringUtils::trimRightView(StringUtils::trimLeftView(queryText)).size() >= kGlobalOptInMinChars;
+          StringUtils::trimRightView(StringUtils::trimLeftView(m_queryText)).size() >= kGlobalOptInMinChars;
       for (auto& provider : m_providers) {
         const bool isDefault = provider->prefix().empty();
         if (!isDefault && (!provider->includeInGlobalSearch() || !allowGlobalOptIn)) {
           continue;
         }
-        auto results = provider->query(queryText);
+        auto results = provider->query(m_queryText);
         if (provider->trackUsage()) {
-          applyUsageBoost(results, *provider);
+          applyFavoritesAndUsageBoost(results, *provider);
           if (sortByUsage && m_usageTracker.getRecentlyUsedCount(provider->id()) > 0) {
             hasRecentlyUsed = true;
           }
@@ -1325,7 +1377,7 @@ void LauncherPanel::onInputChanged(const std::string& text) {
           newCategories.push_back(std::move(cat));
         }
       }
-      sortResultsByScore(m_allResults);
+      sortResultsByFavoriteAndScore(m_allResults);
     }
   }
 
@@ -1483,7 +1535,7 @@ std::vector<LauncherResult> LauncherPanel::providerOverviewResults(std::string_v
   }
 
   if (!filter.empty()) {
-    sortResultsByScore(results);
+    sortResultsByFavoriteAndScore(results);
   }
   return results;
 }
@@ -1576,22 +1628,11 @@ void LauncherPanel::bindDetailResult() {
   m_detailScroll->setScrollOffset(0.0F);
 }
 
-bool LauncherPanel::openAppActionsMenu(std::size_t index, float anchorX, float anchorY) {
+bool LauncherPanel::openActionsMenu(std::size_t index, float anchorX, float anchorY) {
   if (index >= m_results.size()) {
     return false;
   }
   const LauncherResult& base = m_results[index];
-
-  const DesktopEntry* match = nullptr;
-  for (const auto& e : desktopEntries()) {
-    if (e.path == base.id) {
-      match = &e;
-      break;
-    }
-  }
-  if (match == nullptr) {
-    return false;
-  }
 
   WaylandConnection* wl = PanelManager::instance().wayland();
   RenderContext* rc = PanelManager::instance().renderContext();
@@ -1608,59 +1649,141 @@ bool LauncherPanel::openAppActionsMenu(std::size_t index, float anchorX, float a
     m_actionsMenu = std::make_unique<ContextMenuPopup>(*wl, *rc);
   }
 
-  std::vector<DesktopAction> actionsCopy = match->actions;
-  const bool dockPinned =
-      m_config != nullptr && shell::dock::pinned_apps::containsEntry(m_config->config().dock.pinned, *match);
-  const bool canPinToDock = m_config != nullptr && !dockPinned;
-  const bool canUnpinFromDock = m_config != nullptr && dockPinned;
-
   constexpr std::int32_t kActionOpen = -1;
   constexpr std::int32_t kActionPinToDock = -2;
   constexpr std::int32_t kActionUnpinFromDock = -3;
+  constexpr std::int32_t kActionFavoritesAdd = -4;
+  constexpr std::int32_t kActionFavoritesMoveUp = -5;
+  constexpr std::int32_t kActionFavoritesMoveDown = -6;
+  constexpr std::int32_t kActionFavoritesRemove = -7;
 
   std::vector<ContextMenuControlEntry> entries;
-  entries.reserve(actionsCopy.size() + 2);
-  entries.push_back(
-      ContextMenuControlEntry{
-          .id = kActionOpen,
-          .label = i18n::tr("launcher.context-menu.open"),
-          .enabled = true,
-          .separator = false,
-          .hasSubmenu = false,
-      }
-  );
-  // Desktop actions sit above pin/unpin so pin stays last in the menu.
-  for (std::int32_t i = 0; i < static_cast<std::int32_t>(actionsCopy.size()); ++i) {
-    entries.push_back(
-        ContextMenuControlEntry{
-            .id = i,
-            .label = actionsCopy[static_cast<std::size_t>(i)].name,
-            .enabled = true,
-            .separator = false,
-            .hasSubmenu = false,
-        }
-    );
+  std::vector<DesktopAction> actionsCopy;
+
+  const DesktopEntry* match = nullptr;
+  for (const auto& e : desktopEntries()) {
+    if (e.path == base.id) {
+      match = &e;
+      break;
+    }
   }
-  if (canPinToDock) {
+  if (match != nullptr) {
+    actionsCopy = match->actions;
+    const bool dockPinned =
+        m_config != nullptr && shell::dock::pinned_apps::containsEntry(m_config->config().dock.pinned, *match);
+    const bool canPinToDock = m_config != nullptr && !dockPinned;
+    const bool canUnpinFromDock = m_config != nullptr && dockPinned;
+
+    entries.reserve(actionsCopy.size() + 2);
     entries.push_back(
         ContextMenuControlEntry{
-            .id = kActionPinToDock,
-            .label = i18n::tr("launcher.context-menu.pin-to-dock"),
+            .id = kActionOpen,
+            .label = i18n::tr("launcher.context-menu.open"),
             .enabled = true,
             .separator = false,
             .hasSubmenu = false,
         }
     );
-  } else if (canUnpinFromDock) {
-    entries.push_back(
-        ContextMenuControlEntry{
-            .id = kActionUnpinFromDock,
-            .label = i18n::tr("launcher.context-menu.unpin-from-dock"),
-            .enabled = true,
-            .separator = false,
-            .hasSubmenu = false,
+    // Desktop actions sit above pin/unpin so pin stays last in the menu.
+    for (std::int32_t i = 0; i < static_cast<std::int32_t>(actionsCopy.size()); ++i) {
+      entries.push_back(
+          ContextMenuControlEntry{
+              .id = i,
+              .label = actionsCopy[static_cast<std::size_t>(i)].name,
+              .enabled = true,
+              .separator = false,
+              .hasSubmenu = false,
+          }
+      );
+    }
+    if (canPinToDock) {
+      entries.push_back(
+          ContextMenuControlEntry{
+              .id = kActionPinToDock,
+              .label = i18n::tr("launcher.context-menu.pin-to-dock"),
+              .enabled = true,
+              .separator = false,
+              .hasSubmenu = false,
+          }
+      );
+    } else if (canUnpinFromDock) {
+      entries.push_back(
+          ContextMenuControlEntry{
+              .id = kActionUnpinFromDock,
+              .label = i18n::tr("launcher.context-menu.unpin-from-dock"),
+              .enabled = true,
+              .separator = false,
+              .hasSubmenu = false,
+          }
+      );
+    }
+  }
+
+  if (favoritesEnabled()) {
+    for (const auto& provider : m_providers) {
+      if (provider->id() == base.providerId) {
+        if (provider->trackUsage()) {
+          if (entries.empty()) {
+            entries.push_back(
+                ContextMenuControlEntry{
+                    .id = kActionOpen,
+                    .label = i18n::tr("launcher.context-menu.open"),
+                    .enabled = true,
+                    .separator = false,
+                    .hasSubmenu = false,
+                }
+            );
+          }
+
+          if (base.favoriteIndex == 0) {
+            entries.push_back(
+                ContextMenuControlEntry{
+                    .id = kActionFavoritesAdd,
+                    .label = i18n::tr("launcher.context-menu.favorites-add"),
+                    .enabled = true,
+                    .separator = false,
+                    .hasSubmenu = false,
+                }
+            );
+          } else {
+            if (m_activeCategoryType == All && m_queryText.empty()) {
+              entries.push_back(
+                  ContextMenuControlEntry{
+                      .id = kActionFavoritesMoveUp,
+                      .label = i18n::tr("launcher.context-menu.favorites-move-up"),
+                      .enabled =
+                          base.favoriteIndex < static_cast<int>(m_favoritesStore.getFavoritesCount(base.providerId)),
+                      .separator = false,
+                      .hasSubmenu = false,
+                  }
+              );
+              entries.push_back(
+                  ContextMenuControlEntry{
+                      .id = kActionFavoritesMoveDown,
+                      .label = i18n::tr("launcher.context-menu.favorites-move-down"),
+                      .enabled = base.favoriteIndex > 1,
+                      .separator = false,
+                      .hasSubmenu = false,
+                  }
+              );
+            }
+            entries.push_back(
+                ContextMenuControlEntry{
+                    .id = kActionFavoritesRemove,
+                    .label = i18n::tr("launcher.context-menu.favorites-remove"),
+                    .enabled = true,
+                    .separator = false,
+                    .hasSubmenu = false,
+                }
+            );
+          }
         }
-    );
+        break;
+      }
+    }
+  }
+  if (entries.empty()) {
+    return false;
   }
 
   const float scale = contentScale();
@@ -1678,48 +1801,70 @@ bool LauncherPanel::openAppActionsMenu(std::size_t index, float anchorX, float a
     PanelManager::instance().endAttachedPopup(parentSurface);
   });
 
-  m_actionsMenu->setOnActivate([this, base, actionsCopy = std::move(actionsCopy),
-                                entryForPin = *match](const ContextMenuControlEntry& entry) {
-    LauncherResult result = base;
-    result.desktopActionId.clear();
-    if (entry.id == kActionPinToDock) {
-      if (m_config == nullptr
-          || entryForPin.id.empty()
-          || shell::dock::pinned_apps::containsEntry(m_config->config().dock.pinned, entryForPin)) {
-        return;
-      }
-      std::vector<std::string> pinned = m_config->config().dock.pinned;
-      pinned.push_back(entryForPin.id);
-      (void)m_config->setOverride({"dock", "pinned"}, std::move(pinned));
-      return;
-    }
-    if (entry.id == kActionUnpinFromDock) {
-      if (m_config == nullptr) {
-        return;
-      }
-      std::vector<std::string> pinned = m_config->config().dock.pinned;
-      shell::dock::pinned_apps::removeEntry(pinned, entryForPin);
-      (void)m_config->setOverride({"dock", "pinned"}, std::move(pinned));
-      return;
-    }
-    if (entry.id >= 0 && entry.id < static_cast<std::int32_t>(actionsCopy.size())) {
-      result.desktopActionId = actionsCopy[static_cast<std::size_t>(entry.id)].id;
-    } else if (entry.id != kActionOpen) {
-      return;
-    }
+  m_actionsMenu->setOnActivate(
+      [this, base, actionsCopy = std::move(actionsCopy),
+       entryForPin = (match != nullptr ? *match : DesktopEntry{})](const ContextMenuControlEntry& entry) {
+        LauncherResult result = base;
+        result.desktopActionId.clear();
+        if (entry.id == kActionPinToDock) {
+          if (m_config == nullptr
+              || entryForPin.id.empty()
+              || shell::dock::pinned_apps::containsEntry(m_config->config().dock.pinned, entryForPin)) {
+            return;
+          }
+          std::vector<std::string> pinned = m_config->config().dock.pinned;
+          pinned.push_back(entryForPin.id);
+          (void)m_config->setOverride({"dock", "pinned"}, std::move(pinned));
+          return;
+        }
+        if (entry.id == kActionUnpinFromDock) {
+          if (m_config == nullptr) {
+            return;
+          }
+          std::vector<std::string> pinned = m_config->config().dock.pinned;
+          shell::dock::pinned_apps::removeEntry(pinned, entryForPin);
+          (void)m_config->setOverride({"dock", "pinned"}, std::move(pinned));
+          return;
+        }
+        if (entry.id == kActionFavoritesAdd) {
+          m_favoritesStore.add(result.providerId, result.id);
+          reapplyCurrentQuery();
+          return;
+        }
+        if (entry.id == kActionFavoritesMoveUp) {
+          m_favoritesStore.moveUp(result.providerId, result.id);
+          reapplyCurrentQuery();
+          return;
+        }
+        if (entry.id == kActionFavoritesMoveDown) {
+          m_favoritesStore.moveDown(result.providerId, result.id);
+          reapplyCurrentQuery();
+          return;
+        }
+        if (entry.id == kActionFavoritesRemove) {
+          m_favoritesStore.remove(result.providerId, result.id);
+          reapplyCurrentQuery();
+          return;
+        }
+        if (entry.id >= 0 && entry.id < static_cast<std::int32_t>(actionsCopy.size())) {
+          result.desktopActionId = actionsCopy[static_cast<std::size_t>(entry.id)].id;
+        } else if (entry.id != kActionOpen) {
+          return;
+        }
 
-    for (auto& provider : m_providers) {
-      if (provider->id() != std::string_view(result.providerId)) {
-        continue;
-      }
-      if (!provider->activate(result)) {
+        for (auto& provider : m_providers) {
+          if (provider->id() != std::string_view(result.providerId)) {
+            continue;
+          }
+          if (!provider->activate(result)) {
+            return;
+          }
+          finishActivation(*provider, result.id, provider->supportsAutoPaste());
+          return;
+        }
         return;
       }
-      finishActivation(*provider, result.id, provider->supportsAutoPaste());
-      return;
-    }
-    return;
-  });
+  );
 
   const float inset = std::round(std::max(4.0F, Style::spaceXs * scale));
   const auto ax = static_cast<std::int32_t>(std::round(anchorX - inset));
@@ -1885,7 +2030,7 @@ bool LauncherPanel::handleKeyEvent(std::uint32_t sym, std::uint32_t modifiers) {
         anchorY += m_grid->height() * 0.5F;
       }
     }
-    return openAppActionsMenu(m_selectedIndex, anchorX, anchorY);
+    return openActionsMenu(m_selectedIndex, anchorX, anchorY);
   }
 
   if (KeybindMatcher::matches(KeybindAction::Validate, sym, modifiers)) {

@@ -37,6 +37,7 @@ struct LauncherResult {
   std::optional<std::string> query;
   double score = 0.0;
   int recentlyUsedIndex = 0; // Higher is more recent. <=0 means no record or too old.
+  int favoriteIndex = 0;     // Higher is in front. <=0 means not a favorite.
 };
 
 class LauncherProvider {

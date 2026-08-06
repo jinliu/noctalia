@@ -644,7 +644,11 @@
     "context-menu": {
       "open": "Open",
       "pin-to-dock": "Pin to dock",
-      "unpin-from-dock": "Unpin from dock"
+      "unpin-from-dock": "Unpin from dock",
+      "favorites-add": "Add to favorites",
+      "favorites-remove": "Remove from favorites",
+      "favorites-move-up": "Move up",
+      "favorites-move-down": "Move down"
     },
     "empty": {
       "no-results": "No results found",
@@ -2355,6 +2359,10 @@
         "launcher-sort-by-usage": {
           "description": "Boost frequently used apps toward the top and show a Recently Used category filter",
           "label": "Sort by Usage"
+        },
+        "launcher-enable-favorites": {
+          "description": "Allow marking apps as favorites and show them on top in results",
+          "label": "Enable Favorites"
         },
         "list-item-background": {
           "description": "Draw a rounded background behind each launcher and clipboard list item",
