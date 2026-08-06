@@ -101,9 +101,10 @@ void FavoritesStore::load() {
 
 void FavoritesStore::save() const {
   std::error_code ec;
-  std::filesystem::create_directories(std::filesystem::path(m_favoritesPath).parent_path(), ec);
+  const auto parent = std::filesystem::path(m_favoritesPath).parent_path();
+  std::filesystem::create_directories(parent, ec);
   if (ec) {
-    kLog.error("Failed to create directory {}, error: {}", m_favoritesPath, ec.message());
+    kLog.error("Failed to create directory {}, error: {}", parent.string(), ec.message());
     return;
   }
   nlohmann::json json = m_favorites;
