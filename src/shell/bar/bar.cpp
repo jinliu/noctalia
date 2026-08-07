@@ -1225,6 +1225,9 @@ namespace {
     }
     if (screenEdgeClick) {
       auto extendHitTestOutsetToScreenEdge = [&](Node* node, bool start) {
+        if (node == nullptr) {
+          return;
+        }
         auto hitTestOutset = node->hitTestOutset();
         if (start) {
           if (isVertical) {
