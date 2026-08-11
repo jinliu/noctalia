@@ -45,9 +45,6 @@ namespace noctalia::theme {
       GeneratedPalette generated;
       std::string mode;
       Palette internalPalette;
-      std::string internalMode;
-      Palette externalPalette;
-      std::string externalMode;
     };
 
     std::string resolvedModeName(
@@ -82,10 +79,6 @@ namespace noctalia::theme {
           .mode = std::string(mode),
           .internalPalette =
               mapGeneratedPaletteMode(ThemeService::isInternalLightMode(mode) ? generated.light : generated.dark),
-          .internalMode = ThemeService::isInternalLightMode(mode) ? "light" : "dark",
-          .externalPalette =
-              mapGeneratedPaletteMode(ThemeService::isExternalLightMode(mode) ? generated.light : generated.dark),
-          .externalMode = ThemeService::isExternalLightMode(mode) ? "light" : "dark",
       };
     }
 
@@ -227,10 +220,6 @@ namespace noctalia::theme {
           .mode = std::string(mode),
           .internalPalette =
               mapGeneratedPaletteMode(ThemeService::isInternalLightMode(mode) ? generated.light : generated.dark),
-          .internalMode = ThemeService::isInternalLightMode(mode) ? "light" : "dark",
-          .externalPalette =
-              mapGeneratedPaletteMode(ThemeService::isExternalLightMode(mode) ? generated.light : generated.dark),
-          .externalMode = ThemeService::isExternalLightMode(mode) ? "light" : "dark",
       };
     }
 
@@ -514,10 +503,6 @@ namespace noctalia::theme {
             .mode = std::string(mode),
             .internalPalette =
                 mapGeneratedPaletteMode(ThemeService::isInternalLightMode(mode) ? generated->light : generated->dark),
-            .internalMode = ThemeService::isInternalLightMode(mode) ? "light" : "dark",
-            .externalPalette =
-                mapGeneratedPaletteMode(ThemeService::isExternalLightMode(mode) ? generated->light : generated->dark),
-            .externalMode = ThemeService::isExternalLightMode(mode) ? "light" : "dark",
         };
       }
     } else if (cfg.source == PaletteSource::Community && !cfg.communityPalette.empty()) {
@@ -558,10 +543,7 @@ namespace noctalia::theme {
 
     if (cfg.pureBlackDark || m_config.config().accessibility.highContrast) {
       resolved->internalPalette = mapGeneratedPaletteMode(
-          resolved->internalMode == "light" ? resolved->generated.light : resolved->generated.dark
-      );
-      resolved->externalPalette = mapGeneratedPaletteMode(
-          resolved->externalMode == "light" ? resolved->generated.light : resolved->generated.dark
+          ThemeService::isInternalLightMode(resolved->mode) ? resolved->generated.light : resolved->generated.dark
       );
     }
 
