@@ -998,8 +998,8 @@ std::filesystem::path WallpaperPanel::rootDirectoryForSelection() const {
   }
   const auto& wp = m_config->config().wallpaper;
   const ThemeMode configured = m_config->config().theme.mode;
-  const bool isLight =
-      m_themeService != nullptr ? m_themeService->isExternalLightMode() : configured == ThemeMode::Light;
+  const bool isLight = m_themeService != nullptr ? m_themeService->isExternalLightMode()
+                                                 : configured == ThemeMode::Light || configured == ThemeMode::Twilight;
   const ThemeMode mode = wallpaper::effectiveThemeMode(configured, isLight);
 
   const auto& choice = m_monitorChoices[m_selectedMonitorIndex];

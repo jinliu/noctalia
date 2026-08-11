@@ -77,8 +77,8 @@ std::vector<LauncherResult> WallpaperProvider::query(std::string_view text) cons
 
   const std::string query = StringUtils::toLower(StringUtils::trim(text));
   const ThemeMode configured = m_config->config().theme.mode;
-  const bool isLight =
-      m_themeService != nullptr ? m_themeService->isExternalLightMode() : configured == ThemeMode::Light;
+  const bool isLight = m_themeService != nullptr ? m_themeService->isExternalLightMode()
+                                                 : configured == ThemeMode::Light || configured == ThemeMode::Twilight;
   auto candidates = collectWallpapers(
       wallpaper::resolveGlobalWallpaperDirectory(
           m_config->config().wallpaper, wallpaper::effectiveThemeMode(configured, isLight)

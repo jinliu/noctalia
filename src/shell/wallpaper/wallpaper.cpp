@@ -949,8 +949,8 @@ bool Wallpaper::automationAllowed() const noexcept { return !m_automationGate ||
 
 ThemeMode Wallpaper::directoryThemeMode() const noexcept {
   const ThemeMode configured = m_config != nullptr ? m_config->config().theme.mode : ThemeMode::Dark;
-  const bool isLight =
-      m_themeService != nullptr ? m_themeService->isExternalLightMode() : configured == ThemeMode::Light;
+  const bool isLight = m_themeService != nullptr ? m_themeService->isExternalLightMode()
+                                                 : configured == ThemeMode::Light || configured == ThemeMode::Twilight;
   return wallpaper::effectiveThemeMode(configured, isLight);
 }
 

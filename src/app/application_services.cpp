@@ -543,7 +543,7 @@ void Application::initStyleThemeAndWayland() {
 
   // Apply theme before any UI constructs palette-dependent scene nodes.
   auto syncScriptApiWallpaperDirectory = [this]() {
-    const ThemeMode mode = m_themeService.isInternalLightMode() ? ThemeMode::Light : ThemeMode::Dark;
+    const ThemeMode mode = m_themeService.isExternalLightMode() ? ThemeMode::Light : ThemeMode::Dark;
     m_scriptApi.setWallpaperDirectory(
         wallpaper::resolveGlobalWallpaperDirectory(m_configService.config().wallpaper, mode)
     );
