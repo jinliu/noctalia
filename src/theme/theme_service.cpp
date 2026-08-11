@@ -30,6 +30,7 @@
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <utility>
 
 namespace noctalia::theme {
 
@@ -42,19 +43,31 @@ namespace noctalia::theme {
 
     struct ResolvedTheme {
       GeneratedPalette generated;
-      Palette palette;
       std::string mode;
+      Palette internalPalette;
+      std::string internalMode;
+      Palette externalPalette;
+      std::string externalMode;
     };
 
     std::string resolvedModeName(
         const ThemeConfig& cfg, const LocationConfig& location, std::optional<double> latitude,
         std::optional<double> longitude
     ) {
-      if (cfg.mode == ThemeMode::Auto) {
+      switch (cfg.mode) {
+      case ThemeMode::Auto: {
         const auto eval = day_night_schedule::evaluate(location, latitude, longitude);
         return eval.night ? "dark" : "light";
       }
-      return cfg.mode == ThemeMode::Light ? "light" : "dark";
+      case ThemeMode::Dark:
+        return "dark";
+      case ThemeMode::Light:
+        return "light";
+      case ThemeMode::Twilight:
+        return "twilight";
+      default:
+        std::unreachable();
+      }
     }
 
     ResolvedTheme resolveBuiltin(const ThemeConfig& cfg, std::string_view mode) {
@@ -66,8 +79,13 @@ namespace noctalia::theme {
       const GeneratedPalette generated = expandBuiltinPalette(*palette);
       return {
           .generated = generated,
-          .palette = mapGeneratedPaletteMode(mode == "light" ? generated.light : generated.dark),
           .mode = std::string(mode),
+          .internalPalette =
+              mapGeneratedPaletteMode(ThemeService::isInternalLightMode(mode) ? generated.light : generated.dark),
+          .internalMode = ThemeService::isInternalLightMode(mode) ? "light" : "dark",
+          .externalPalette =
+              mapGeneratedPaletteMode(ThemeService::isExternalLightMode(mode) ? generated.light : generated.dark),
+          .externalMode = ThemeService::isExternalLightMode(mode) ? "light" : "dark",
       };
     }
 
@@ -206,8 +224,13 @@ namespace noctalia::theme {
       const GeneratedPalette generated = expandBuiltinPalette(bp);
       return {
           .generated = generated,
-          .palette = mapGeneratedPaletteMode(mode == "light" ? generated.light : generated.dark),
           .mode = std::string(mode),
+          .internalPalette =
+              mapGeneratedPaletteMode(ThemeService::isInternalLightMode(mode) ? generated.light : generated.dark),
+          .internalMode = ThemeService::isInternalLightMode(mode) ? "light" : "dark",
+          .externalPalette =
+              mapGeneratedPaletteMode(ThemeService::isExternalLightMode(mode) ? generated.light : generated.dark),
+          .externalMode = ThemeService::isExternalLightMode(mode) ? "light" : "dark",
       };
     }
 
@@ -268,6 +291,10 @@ namespace noctalia::theme {
 
   } // namespace
 
+  bool ThemeService::isInternalLightMode(std::string_view mode) { return mode == "light"; }
+
+  bool ThemeService::isExternalLightMode(std::string_view mode) { return mode != "dark"; }
+
   ThemeService::ThemeService(ConfigService& config, HttpClient& httpClient)
       : m_config(config), m_httpClient(httpClient) {}
 
@@ -305,7 +332,7 @@ namespace noctalia::theme {
   }
 
   void ThemeService::toggleLightDark() {
-    const auto next = m_isLightMode ? ThemeMode::Dark : ThemeMode::Light;
+    const auto next = isExternalLightMode() ? ThemeMode::Dark : ThemeMode::Light;
     // Persist via ConfigService → StateService. The resulting overrides-change
     // callback rebuilds the Config and fires the reload callbacks, which call
     // ThemeService::onConfigReload() to transition to the new palette.
@@ -319,6 +346,9 @@ namespace noctalia::theme {
       next = ThemeMode::Light;
       break;
     case ThemeMode::Light:
+      next = ThemeMode::Twilight;
+      break;
+    case ThemeMode::Twilight:
       next = ThemeMode::Auto;
       break;
     case ThemeMode::Auto:
@@ -330,9 +360,17 @@ namespace noctalia::theme {
 
   ThemeMode ThemeService::configuredMode() const noexcept { return m_config.config().theme.mode; }
 
-  bool ThemeService::isLightMode() const noexcept { return m_isLightMode; }
+  bool ThemeService::isInternalLightMode() const noexcept { return isInternalLightMode(m_resolvedMode); }
 
-  std::string_view ThemeService::resolvedMode() const noexcept { return m_isLightMode ? "light" : "dark"; }
+  bool ThemeService::isExternalLightMode() const noexcept { return isExternalLightMode(m_resolvedMode); }
+
+  std::string_view ThemeService::resolvedInternalMode() const noexcept {
+    return isInternalLightMode() ? "light" : "dark";
+  }
+
+  std::string_view ThemeService::resolvedExternalMode() const noexcept {
+    return isExternalLightMode() ? "light" : "dark";
+  }
 
   void ThemeService::setChangeCallback(ChangeCallback callback) { m_changeCallback = std::move(callback); }
 
@@ -473,8 +511,13 @@ namespace noctalia::theme {
       if (auto generated = resolveWallpaperGenerated(cfg, m_config.getPaletteWallpaperPath())) {
         resolved = ResolvedTheme{
             .generated = *generated,
-            .palette = mapGeneratedPaletteMode(mode == "light" ? generated->light : generated->dark),
-            .mode = mode,
+            .mode = std::string(mode),
+            .internalPalette =
+                mapGeneratedPaletteMode(ThemeService::isInternalLightMode(mode) ? generated->light : generated->dark),
+            .internalMode = ThemeService::isInternalLightMode(mode) ? "light" : "dark",
+            .externalPalette =
+                mapGeneratedPaletteMode(ThemeService::isExternalLightMode(mode) ? generated->light : generated->dark),
+            .externalMode = ThemeService::isExternalLightMode(mode) ? "light" : "dark",
         };
       }
     } else if (cfg.source == PaletteSource::Community && !cfg.communityPalette.empty()) {
@@ -514,22 +557,23 @@ namespace noctalia::theme {
     }
 
     if (cfg.pureBlackDark || m_config.config().accessibility.highContrast) {
-      if (resolved->mode != "light") {
-        resolved->palette = mapGeneratedPaletteMode(resolved->generated.dark);
-      } else {
-        resolved->palette = mapGeneratedPaletteMode(resolved->generated.light);
-      }
+      resolved->internalPalette = mapGeneratedPaletteMode(
+          resolved->internalMode == "light" ? resolved->generated.light : resolved->generated.dark
+      );
+      resolved->externalPalette = mapGeneratedPaletteMode(
+          resolved->externalMode == "light" ? resolved->generated.light : resolved->generated.dark
+      );
     }
 
     queueResolvedCallback(resolved->generated, resolved->mode);
-    m_isLightMode = resolved->mode == "light";
+    m_resolvedMode = resolved->mode;
 
     if (animate) {
-      setResolvedThemeLight(m_isLightMode);
+      setResolvedThemeLight(isInternalLightMode());
       notifyShellAppIconColorizationChanged();
-      startTransition(resolved->palette);
+      startTransition(resolved->internalPalette);
     } else {
-      if (m_transitionAnimId == 0 && palette == resolved->palette) {
+      if (m_transitionAnimId == 0 && palette == resolved->internalPalette) {
         flushResolvedCallback(/*defer=*/false);
         return;
       }
@@ -538,9 +582,9 @@ namespace noctalia::theme {
         m_transitionAnimId = 0;
       }
       m_transitionTimer.stop();
-      setResolvedThemeLight(m_isLightMode);
+      setResolvedThemeLight(isInternalLightMode());
       notifyShellAppIconColorizationChanged();
-      setPalette(resolved->palette);
+      setPalette(resolved->internalPalette);
       if (m_changeCallback) {
         m_changeCallback();
       }
@@ -663,19 +707,14 @@ namespace noctalia::theme {
       return "ok\n";
     });
     ipc.bind(
-        noctalia::cli::msg::themeModeGet,
-        [this](const std::string&) -> std::string {
-          std::string out(resolvedMode());
-          out.push_back('\n');
-          return out;
-        },
+        noctalia::cli::msg::themeModeGet, [this](const std::string&) -> std::string { return m_resolvedMode + "\n"; },
         IpcService::HandlerOptions{.actionEditorVisibility = IpcService::ActionEditorVisibility::Hidden}
     );
     ipc.bind(noctalia::cli::msg::themeModeSet, [this](const std::string& args) -> std::string {
       const std::string token = StringUtils::trim(args);
       const auto mode = enumFromKey(kThemeModes, token);
       if (!mode.has_value()) {
-        return "error: expected dark, light, or auto\n";
+        return "error: expected dark, light, twilight, or auto\n";
       }
       m_config.setThemeMode(*mode);
       return "ok\n";

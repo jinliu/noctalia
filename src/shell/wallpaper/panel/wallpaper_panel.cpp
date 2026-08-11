@@ -61,6 +61,7 @@ namespace {
     case ThemeMode::Dark:
       return 0;
     case ThemeMode::Light:
+    case ThemeMode::Twilight:
       return 1;
     case ThemeMode::Auto:
     default:
@@ -997,7 +998,8 @@ std::filesystem::path WallpaperPanel::rootDirectoryForSelection() const {
   }
   const auto& wp = m_config->config().wallpaper;
   const ThemeMode configured = m_config->config().theme.mode;
-  const bool isLight = m_themeService != nullptr ? m_themeService->isLightMode() : configured == ThemeMode::Light;
+  const bool isLight =
+      m_themeService != nullptr ? m_themeService->isExternalLightMode() : configured == ThemeMode::Light;
   const ThemeMode mode = wallpaper::effectiveThemeMode(configured, isLight);
 
   const auto& choice = m_monitorChoices[m_selectedMonitorIndex];

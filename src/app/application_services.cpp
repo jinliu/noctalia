@@ -119,11 +119,8 @@ namespace {
     }
   }
 
-  void syncGSettingsColorScheme(std::string_view mode) {
-    if (mode.empty()) {
-      return;
-    }
-    const std::string pref = mode == "light" ? "prefer-light" : "prefer-dark";
+  void syncGSettingsColorScheme(bool isLightMode) {
+    const std::string pref = isLightMode ? "prefer-light" : "prefer-dark";
     if (process::commandExists("gsettings")) {
       std::string cmd = "gsettings set org.gnome.desktop.interface color-scheme \"";
       cmd += pref;
@@ -546,7 +543,7 @@ void Application::initStyleThemeAndWayland() {
 
   // Apply theme before any UI constructs palette-dependent scene nodes.
   auto syncScriptApiWallpaperDirectory = [this]() {
-    const ThemeMode mode = m_themeService.resolvedMode() == "light" ? ThemeMode::Light : ThemeMode::Dark;
+    const ThemeMode mode = m_themeService.isInternalLightMode() ? ThemeMode::Light : ThemeMode::Dark;
     m_scriptApi.setWallpaperDirectory(
         wallpaper::resolveGlobalWallpaperDirectory(m_configService.config().wallpaper, mode)
     );
@@ -610,7 +607,7 @@ void Application::initStyleThemeAndWayland() {
                                      ) mutable {
     const std::string resolvedMode(mode);
     const std::string configuredMode(enumToKey(kThemeModes, m_themeService.configuredMode()));
-    m_scriptApi.setDarkMode(resolvedMode != "light");
+    m_scriptApi.setDarkMode(!noctalia::theme::ThemeService::isInternalLightMode(mode));
     syncScriptApiWallpaperDirectory();
     const std::optional<std::string> previousMode = lastResolvedThemeMode;
     lastResolvedThemeMode = resolvedMode;
@@ -619,7 +616,9 @@ void Application::initStyleThemeAndWayland() {
     if (colorsChanged) {
       m_templateApplyService.setAfterApplyCallback([this]() { m_hookManager.fire(HookKind::ColorsChanged); });
     }
-    m_templateApplyService.apply(generated, mode);
+    m_templateApplyService.apply(
+        generated, noctalia::theme::ThemeService::isExternalLightMode(mode) ? "light" : "dark"
+    );
     if (previousMode.has_value() && *previousMode != resolvedMode) {
       m_hookManager.fire(
           HookKind::ThemeModeChanged,
@@ -628,10 +627,10 @@ void Application::initStyleThemeAndWayland() {
            {"NOCTALIA_THEME_MODE_CONFIGURED", configuredMode}}
       );
     }
-    syncGSettingsColorScheme(resolvedMode);
+    syncGSettingsColorScheme(noctalia::theme::ThemeService::isExternalLightMode(mode));
   });
   m_themeService.apply();
-  syncGSettingsColorScheme(m_themeService.resolvedMode());
+  syncGSettingsColorScheme(m_themeService.isExternalLightMode());
   syncScriptApiWallpaperDirectory();
   syncScriptApiShellTimeFormats();
   m_configService.addReloadCallback([this]() { m_themeService.onConfigReload(); }, "theme");

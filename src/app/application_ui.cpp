@@ -235,7 +235,8 @@ void Application::performGreeterSync(bool quiet) {
     m_polkitAgent->markNextRequestInternal();
   }
   const auto launch = greeter::syncAppearanceToGreeterAsync(
-      m_configService, m_themeService.resolvedMode(), complete, &m_compositorPlatform, m_logindService != nullptr
+      m_configService, m_themeService.resolvedInternalMode(), complete, &m_compositorPlatform,
+      m_logindService != nullptr
   );
   if (launch == greeter::GreeterSyncLaunch::Failed) {
     if (quiet) {

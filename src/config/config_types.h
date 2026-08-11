@@ -1406,12 +1406,14 @@ constexpr EnumOption<PaletteSource> kPaletteSources[] = {
 enum class ThemeMode : std::uint8_t {
   Dark = 0,
   Light = 1,
-  Auto = 2,
+  Twilight = 2,
+  Auto = 3,
 };
 
 constexpr EnumOption<ThemeMode> kThemeModes[] = {
     {ThemeMode::Dark, "dark", "settings.options.theme.mode.dark"},
     {ThemeMode::Light, "light", "settings.options.theme.mode.light"},
+    {ThemeMode::Twilight, "twilight", "settings.options.theme.mode.twilight"},
     {ThemeMode::Auto, "auto", "common.states.auto"},
 };
 

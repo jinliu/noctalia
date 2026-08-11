@@ -193,6 +193,8 @@ namespace {
         return i18n::tr("control-center.shortcuts.dark-mode.dark");
       case ThemeMode::Light:
         return i18n::tr("control-center.shortcuts.dark-mode.light");
+      case ThemeMode::Twilight:
+        return i18n::tr("control-center.shortcuts.dark-mode.twilight");
       case ThemeMode::Auto:
         return i18n::tr("control-center.shortcuts.dark-mode.auto");
       }

@@ -338,7 +338,8 @@
       "dark-mode": {
         "auto": "Auto Mode",
         "dark": "Dark Mode",
-        "light": "Light Mode"
+        "light": "Light Mode",
+        "twilight": "Twilight Mode"
       },
       "keyboard-layout": "Keyboard Layout",
       "media": "Media",
@@ -1399,7 +1400,8 @@
       "theme": {
         "mode": {
           "dark": "Dark",
-          "light": "Light"
+          "light": "Light",
+          "twilight": "Twilight"
         },
         "source": {
           "built-in": "Built-In",

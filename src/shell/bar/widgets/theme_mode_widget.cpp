@@ -57,7 +57,7 @@ void ThemeModeWidget::syncState(Renderer& renderer) {
     return;
   }
 
-  const bool isLight = m_themeService->isLightMode();
+  const bool isLight = m_themeService->isInternalLightMode();
   if (isLight == m_lastIsLight) {
     return;
   }

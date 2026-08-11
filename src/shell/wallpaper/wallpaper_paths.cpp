@@ -3,11 +3,8 @@
 #include "config/config_types.h"
 #include "util/file_utils.h"
 
-ThemeMode wallpaper::effectiveThemeMode(ThemeMode mode, bool isLight) noexcept {
-  if (mode == ThemeMode::Auto) {
-    return isLight ? ThemeMode::Light : ThemeMode::Dark;
-  }
-  return mode;
+ThemeMode wallpaper::effectiveThemeMode(ThemeMode /*mode*/, bool isLight) noexcept {
+  return isLight ? ThemeMode::Light : ThemeMode::Dark;
 }
 
 const WallpaperMonitorOverride*

@@ -23,6 +23,9 @@ namespace noctalia::theme {
     using ChangeCallback = std::function<void()>;
     using ResolvedCallback = std::function<void(const GeneratedPalette&, std::string_view)>;
 
+    static bool isInternalLightMode(std::string_view mode);
+    static bool isExternalLightMode(std::string_view mode);
+
     ThemeService(ConfigService& config, HttpClient& httpClient);
 
     // Snaps the palette to the resolved theme (no fade). Used at startup.
@@ -36,8 +39,10 @@ namespace noctalia::theme {
     void toggleLightDark();
     void cycleMode();
     [[nodiscard]] ThemeMode configuredMode() const noexcept;
-    [[nodiscard]] bool isLightMode() const noexcept;
-    [[nodiscard]] std::string_view resolvedMode() const noexcept;
+    [[nodiscard]] bool isInternalLightMode() const noexcept;
+    [[nodiscard]] bool isExternalLightMode() const noexcept;
+    [[nodiscard]] std::string_view resolvedInternalMode() const noexcept;
+    [[nodiscard]] std::string_view resolvedExternalMode() const noexcept;
 
     void setChangeCallback(ChangeCallback callback);
     void setResolvedCallback(ResolvedCallback callback);
@@ -86,7 +91,7 @@ namespace noctalia::theme {
     Palette m_targetPalette{};
     AnimationManager::Id m_transitionAnimId = 0;
     bool m_transitionResolvedCallbackFlushed = false;
-    bool m_isLightMode = false;
+    std::string m_resolvedMode = "dark";
     std::optional<double> m_autoLatitude;
     std::optional<double> m_autoLongitude;
     Timer m_autoTimer;

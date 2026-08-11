@@ -13,7 +13,7 @@ namespace wallpaper {
 
   inline constexpr std::string_view kDefaultWallpaperDirectory = "~/Pictures/Wallpapers";
 
-  // Maps theme.mode=auto to the currently resolved light/dark appearance.
+  // Resolve theme mode to light/dark appearance.
   [[nodiscard]] ThemeMode effectiveThemeMode(ThemeMode mode, bool isLight) noexcept;
 
   [[nodiscard]] const WallpaperMonitorOverride*
