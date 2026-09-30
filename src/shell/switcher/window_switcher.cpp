@@ -724,6 +724,7 @@ void WindowSwitcher::onToplevelChange() {
 void WindowSwitcher::show(wl_output* output) { showWithDirection(output, 1); }
 
 void WindowSwitcher::showFromShortcut(wl_output* output, std::uint32_t modifiers) {
+  kLog.warn("showFromShortcut(modifiers={})", modifiers);
   showWithDirection(output, (modifiers & KeyMod::Shift) != 0 ? -1 : 1);
   if (!m_active) {
     return;
@@ -740,6 +741,7 @@ void WindowSwitcher::showWithDirection(wl_output* output, int direction) {
   const bool wasActive = m_active;
   const bool outputChanged = output != m_output;
   if (!wasActive) {
+    kLog.warn("showWithDirection(direction={}): !wasActive", direction);
     recordFocusedWindow();
     cancelShortcutModifierReleaseCheck();
     m_shortcutState.reset();
@@ -776,9 +778,13 @@ void WindowSwitcher::showWithDirection(wl_output* output, int direction) {
   }
 }
 
-void WindowSwitcher::captureShortcutModifiers(std::uint32_t modifiers) { m_shortcutState.capture(modifiers); }
+void WindowSwitcher::captureShortcutModifiers(std::uint32_t modifiers) {
+  kLog.warn("captureShortcutModifiers({})", modifiers);
+  m_shortcutState.capture(modifiers);
+}
 
 void WindowSwitcher::hide() {
+  kLog.warn("hide()");
   if (!m_active && m_instance == nullptr) {
     return;
   }
@@ -1258,11 +1264,14 @@ bool WindowSwitcher::matchesTrigger(const KeyboardEvent& event) const noexcept {
 }
 
 bool WindowSwitcher::isModifierRelease(const KeyboardEvent& event) const noexcept {
-  return !event.pressed && (KeySymbol::modifierMask(event.sym) & m_shortcutState.modifiers()) != 0;
+  const bool result = !event.pressed && (KeySymbol::modifierMask(event.sym) & m_shortcutState.modifiers()) != 0;
+  kLog.warn("isModifierRelease(event.pressed={}, event.sym={}) -> {}", event.pressed, event.sym, result);
+  return result;
 }
 
 void WindowSwitcher::onKeyboardModifiers(std::uint32_t modifiers) {
   if (!m_active || !m_shortcutSession) {
+    kLog.warn("onKeyboardModifiers({}): !m_active || !m_shortcutSession", modifiers);
     return;
   }
   if (!m_shortcutState.hasPendingRelease()) {
@@ -1270,15 +1279,18 @@ void WindowSwitcher::onKeyboardModifiers(std::uint32_t modifiers) {
         && m_instance->surface != nullptr
         && m_wayland->lastKeyboardSurface() == m_instance->surface->wlSurface();
     if (!m_shortcutState.hasPendingFocusCheck() || !focused) {
+      kLog.warn("onKeyboardModifiers({}): !m_shortcutState.hasPendingFocusCheck() || !focused", modifiers);
       return;
     }
   }
+  kLog.warn("onKeyboardModifiers({}): proceeding with update", modifiers);
   m_shortcutState.updateModifiers(modifiers);
   scheduleShortcutModifierReleaseCheck();
 }
 
 void WindowSwitcher::scheduleShortcutModifierReleaseCheck() {
   if (!m_shortcutState.beginReleaseCheck()) {
+    kLog.warn("scheduleShortcutModifierReleaseCheck(): !m_shortcutState.beginReleaseCheck()");
     return;
   }
 
@@ -1291,6 +1303,7 @@ void WindowSwitcher::scheduleShortcutModifierReleaseCheck() {
           .done = &WindowSwitcher::handleShortcutModifierReleaseSync,
       };
       if (wl_callback_add_listener(m_shortcutReleaseSync, &kReleaseSyncListener, this) == 0) {
+        kLog.warn("scheduleShortcutModifierReleaseCheck(): wl_callback_add_listener() succeeded");
         return;
       }
       wl_callback_destroy(m_shortcutReleaseSync);
@@ -1298,6 +1311,7 @@ void WindowSwitcher::scheduleShortcutModifierReleaseCheck() {
     }
   }
 
+  kLog.warn("scheduleShortcutModifierReleaseCheck(): falling back to DeferredCall");
   const std::uint64_t generation = m_shortcutSessionGeneration;
   DeferredCall::callLater([this, generation]() {
     if (generation != m_shortcutSessionGeneration) {
@@ -1309,19 +1323,24 @@ void WindowSwitcher::scheduleShortcutModifierReleaseCheck() {
 
 void WindowSwitcher::completeShortcutModifierReleaseCheck() {
   if (!m_active || !m_shortcutSession || m_wayland == nullptr) {
+    kLog.warn("completeShortcutModifierReleaseCheck(): !m_active || !m_shortcutSession || m_wayland == nullptr");
     return;
   }
   if (!m_shortcutState.completeReleaseCheck(m_wayland->keyboardModifiers())) {
+    kLog.warn("completeShortcutModifierReleaseCheck(): completeReleaseCheck() returned false");
     return;
   }
+  kLog.warn("completeShortcutModifierReleaseCheck(): proceeding with activation");
   activateSelected();
   hide();
 }
 
 void WindowSwitcher::cancelShortcutModifierReleaseCheck() {
   if (m_shortcutReleaseSync == nullptr) {
+    kLog.warn("cancelShortcutModifierReleaseCheck(): m_shortcutReleaseSync == nullptr");
     return;
   }
+  kLog.warn("cancelShortcutModifierReleaseCheck(): destroying m_shortcutReleaseSync");
   wl_callback_destroy(m_shortcutReleaseSync);
   m_shortcutReleaseSync = nullptr;
 }
@@ -1331,8 +1350,10 @@ void WindowSwitcher::handleShortcutModifierReleaseSync(
 ) {
   auto* self = static_cast<WindowSwitcher*>(data);
   if (self->m_shortcutReleaseSync != callback) {
+    kLog.warn("handleShortcutModifierReleaseSync(): callback does not match m_shortcutReleaseSync");
     return;
   }
+  kLog.warn("handleShortcutModifierReleaseSync(): destroying m_shortcutReleaseSync and completing release check");
   self->m_shortcutReleaseSync = nullptr;
   wl_callback_destroy(callback);
   self->completeShortcutModifierReleaseCheck();
@@ -1340,13 +1361,17 @@ void WindowSwitcher::handleShortcutModifierReleaseSync(
 
 bool WindowSwitcher::onKeyboardEvent(const KeyboardEvent& event) {
   if (m_active && m_instance == nullptr) {
+    kLog.warn("onKeyboardEvent(): m_active && m_instance == nullptr, hiding window switcher");
     hide();
     return false;
   }
 
   if (!m_active) {
+    kLog.warn("onKeyboardEvent(): !m_active, checking for trigger match");
     if (matchesTrigger(event)) {
+      kLog.warn("onKeyboardEvent(): trigger match found");
       if (m_platform == nullptr) {
+        kLog.warn("onKeyboardEvent(): m_platform is nullptr");
         return false;
       }
       wl_output* output = m_platform->preferredInteractiveOutput();
@@ -1354,15 +1379,19 @@ bool WindowSwitcher::onKeyboardEvent(const KeyboardEvent& event) {
         output = m_wayland->outputs().front().output;
       }
       if (output == nullptr) {
+        kLog.warn("onKeyboardEvent(): output is nullptr");
         return false;
       }
+      kLog.warn("onKeyboardEvent(): showing window switcher from shortcut");
       showFromShortcut(output, event.modifiers);
       return true;
     }
+    kLog.warn("onKeyboardEvent(): no trigger match found");
     return false;
   }
 
   if (m_shortcutSession) {
+    kLog.warn("onKeyboardEvent(): m_shortcutSession is active");
     captureShortcutModifiers(event.modifiers);
     if (!event.pressed) {
       captureShortcutModifiers(KeySymbol::modifierMask(event.sym));
@@ -1370,6 +1399,7 @@ bool WindowSwitcher::onKeyboardEvent(const KeyboardEvent& event) {
   }
 
   if (isModifierRelease(event)) {
+    kLog.warn("onKeyboardEvent(): isModifierRelease(event)");
     if (m_shortcutState.noteRelease(KeySymbol::modifierMask(event.sym), event.modifiers)) {
       scheduleShortcutModifierReleaseCheck();
     }
@@ -1377,6 +1407,7 @@ bool WindowSwitcher::onKeyboardEvent(const KeyboardEvent& event) {
   }
 
   if (!event.pressed || event.preedit) {
+    kLog.warn("onKeyboardEvent(): key is not pressed or is a preedit key");
     return true;
   }
 
