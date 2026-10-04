@@ -25,10 +25,10 @@ The following compositors are supported with the systemd user service by default
 - Hyprland (uwsm-managed)
 - Umbriel
 - Mango
-- Labwc
 
 The following compositors are supported, but require additional steps:
 
+- Labwc
 - KDE Plasma
 
 The following compositors are not supported (because they don't run as systemd user services):
@@ -50,6 +50,14 @@ To uninstall, run `systemctl --user disable noctalia.service`
 
 It's also recommended to enable the "Launch Apps as systemd Services" option in "Shell" settings,
 when running Noctalia as a systemd user service.
+
+### Labwc
+
+For Labwc, you also need to add the following line to `$HOME/.config/labwc/autostart`:
+
+```sh
+systemctl --user --no-block start labwc-session.target
+```
 
 ### KDE Plasma
 
