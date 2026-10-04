@@ -71,7 +71,7 @@ namespace {
     }
 
     ssize_t written = write(fd, message, message_length);
-    if (written != (ssize_t)message_length) {
+    if (written != static_cast<ssize_t>(message_length)) {
       close(fd);
       return written < 0 ? -errno : -EPROTO;
     }
