@@ -1949,6 +1949,9 @@ void ConfigService::registerIpc(IpcService& ipc) {
     }
     if (!writeOverridesToFile()) {
       kLog.warn("failed to write {}", m_overridesPath);
+      if (!m_lastMutationError.empty()) {
+        return "error: " + m_lastMutationError + "\n";
+      }
       return "error: failed to write overrides\n";
     }
     m_ownOverridesWritePending = true;
