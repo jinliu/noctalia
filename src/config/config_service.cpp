@@ -1927,8 +1927,8 @@ void ConfigService::registerIpc(IpcService& ipc) {
     if (v.size() != 1) {
       return "error: expected exactly one argument\n";
     }
-    const auto path = v[0];
-    auto node = m_configTable.at_path(path);
+    const auto& path = v[0];
+    const auto node = m_configTable.at_path(path);
     std::ostringstream oss;
     oss << node;
     return oss.str();
