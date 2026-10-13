@@ -1545,6 +1545,7 @@ void ConfigService::loadAll() {
     kLog.info("no config files found, using defaults");
     m_lastChange = ConfigChangeSet{};
     m_config = makeDefaultConfig();
+    m_configTable.clear();
     m_configFileBarNames.clear();
     m_configFileMonitorOverrideNames.clear();
     m_configFileDockMonitorOverrideNames.clear();
@@ -1610,6 +1611,7 @@ void ConfigService::loadAll() {
     m_configFileCalendarAccountNames = std::move(configFileCalendarAccountNames);
     extractWallpaperFromTable(merged);
     updateLegacyConfigIssues(std::move(legacyIssues));
+    m_configTable = std::move(merged);
 
     if (sidecarNeedsPersist) {
       toml::table previousOverrides = m_overridesTable;
@@ -1624,6 +1626,7 @@ void ConfigService::loadAll() {
   } else if (m_config.bars.empty()) {
     m_lastChange = ConfigChangeSet{};
     m_config = makeDefaultConfig();
+    m_configTable.clear();
     m_configFileBarNames.clear();
     m_configFileMonitorOverrideNames.clear();
     m_configFileDockMonitorOverrideNames.clear();
@@ -1915,6 +1918,40 @@ bool ConfigService::matchesKeybind(KeybindAction action, std::uint32_t sym, std:
 
 void ConfigService::registerIpc(IpcService& ipc) {
   ipc.bind(noctalia::cli::msg::configReload, [this](const std::string&) -> std::string {
+    forceReload();
+    return "ok\n";
+  });
+
+  ipc.bind(noctalia::cli::msg::configGet, [this](const std::string& args) -> std::string {
+    const auto v = StringUtils::splitWhitespace(StringUtils::trim(args));
+    if (v.size() != 1) {
+      return "error: expected exactly one argument\n";
+    }
+    const auto path = v[0];
+    auto node = m_configTable.at_path(path);
+    std::ostringstream oss;
+    oss << node;
+    return oss.str();
+  });
+
+  ipc.bind(noctalia::cli::msg::configSet, [this](const std::string& args) -> std::string {
+    const auto t = StringUtils::trim(args);
+    const auto splitPos = std::ranges::find_if(t, [](auto c) { return std::isspace(c); });
+    const auto path = t.substr(0, splitPos - t.begin());
+    const auto value = t.substr(splitPos - t.begin());
+
+    const std::string s = path + "=" + value;
+    try {
+      toml::table tbl = toml::parse(s);
+      deepMerge(m_overridesTable, tbl);
+    } catch (const toml::parse_error& e) {
+      return std::string("error: ") + e.what() + "\n";
+    }
+    if (!writeOverridesToFile()) {
+      kLog.warn("failed to write {}", m_overridesPath);
+      return "error: failed to write overrides\n";
+    }
+    m_ownOverridesWritePending = true;
     forceReload();
     return "ok\n";
   });
