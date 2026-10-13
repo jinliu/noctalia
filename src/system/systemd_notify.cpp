@@ -7,6 +7,8 @@
  * This protocol is guaranteed to be stable as per:
  * https://systemd.io/PORTABILITY_AND_STABILITY/ */
 
+#include "system/systemd_notify.h"
+
 #include "core/log.h"
 
 #include <errno.h>
@@ -19,7 +21,7 @@
 
 namespace {
 
-  constexpr Logger kLog("app");
+  constexpr Logger kLog("systemd");
 
   int notify(const char* message) {
     union sockaddr_union {

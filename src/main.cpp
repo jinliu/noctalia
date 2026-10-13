@@ -24,6 +24,7 @@
 #include <cstring>
 #include <fcntl.h>
 #include <print>
+#include <stdexcept>
 #include <string>
 #include <unistd.h>
 
