@@ -205,7 +205,6 @@ void Application::run(std::function<void()> startupReadyCallback) {
   // Item callbacks run from deferred work on the main loop, after the shell
   // is initialized.
   initEarlySessionBusAndTray();
-
   runStartupPhase("initServices", [this]() { initServices(); });
   runStartupPhase("initPlugins", [this]() {
     // Configure the plugin registry from [plugins] before any UI consumes it, and
