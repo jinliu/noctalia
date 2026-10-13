@@ -11,9 +11,9 @@ can enable this service so that systemd automatically starts Noctalia after the 
 
 Benefits:
 - The Noctalia service blocks subsequent services having `After=graphical-session.target` (e.g. XDG
-  autostart apps) from starting, until Noctalia starts listening on the systray D-Bus interface. This
-  cleanly fixes the race condition where an autostart app might try to register with the systray before
-  Noctalia is ready, thus failing to show its systray icon.
+  autostart apps) from starting, until Noctalia finishes starting up. This cleanly fixes the race
+  condition, where an autostart app might try to register with the systray before Noctalia starts
+  listening on the systray D-Bus interface, thus failing to show its systray icon.
 - Noctalia runs in its own cgroup, isolating its resource usage from other processes. And you can set
   resource limits for it independently in the service file.
 
@@ -49,7 +49,8 @@ This enables Noctalia for all supported compositors (except KDE Plasma, see "KDE
 To uninstall, run `systemctl --user disable noctalia.service`
 
 It's also recommended to enable the "Launch Apps as systemd Services" option in "Shell" settings,
-when running Noctalia as a systemd user service.
+when running Noctalia as a systemd user service. This puts apps launched from Noctalia in their own
+transient systemd services, so they won't be killed when you restart Noctalia.
 
 ### Labwc
 
@@ -72,7 +73,7 @@ edit `$HOME/.config/systemd/user/noctalia.service` and comment out (add a leadin
 line for the compositors you do not want to enable. Then continue from step 2.
 
 If you use `uwsm` to launch compositors other than Hyprland, add corresponding lines like
-`After=wayland-wm@hyprland.desktop.target` and `WantedBy=wayland-session@hyprland.desktop.target`
+`After=wayland-wm@<compositor-name>.desktop.target` and `WantedBy=wayland-session@<compositor-name>.desktop.target`
 to the service file.
 
 ## Troubleshooting
