@@ -1,15 +1,12 @@
-/* SPDX-License-Identifier: MIT-0 */
-
-/* Code extracted from `man 3 sd_notify` and modified for use in this project. */
-
-/* Implement the systemd notify protocol without external dependencies.
+/* Code extracted from `man 3 sd_notify` and modified for use in this project.
+ *
+ * Implement the systemd notify protocol without external dependencies.
  * Supports both readiness notification on startup and on reloading,
  * according to the protocol defined at:
  * https://www.freedesktop.org/software/systemd/man/latest/sd_notify.html
  * This protocol is guaranteed to be stable as per:
  * https://systemd.io/PORTABILITY_AND_STABILITY/ */
 
-#include "application.h"
 #include "core/log.h"
 
 #include <errno.h>
@@ -83,7 +80,7 @@ namespace {
 
 } // namespace
 
-bool Application::systemdNotifyReady(void) {
+bool systemdNotifyReady(void) {
   int ret = notify("READY=1");
   if (ret < 0) {
     kLog.error("systemd notification failed with return code {}", ret);

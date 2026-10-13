@@ -231,7 +231,6 @@ private:
   void onPowerProfileChangedForEvents(const PowerProfilesState& state, PowerProfilesChangeOrigin origin);
   [[nodiscard]] std::vector<PollSource*> currentPollSources();
   [[nodiscard]] std::vector<PollSource*> buildPollSources();
-  bool systemdNotifyReady();
 
   WaylandConnection m_wayland;
   WorkspaceAlertService m_workspaceAlertService;

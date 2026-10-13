@@ -206,11 +206,6 @@ void Application::run(std::function<void()> startupReadyCallback) {
   // is initialized.
   initEarlySessionBusAndTray();
 
-  if (!systemdNotifyReady()) {
-    kLog.error("Failed to notify systemd that the service is ready.");
-    return;
-  }
-
   runStartupPhase("initServices", [this]() { initServices(); });
   runStartupPhase("initPlugins", [this]() {
     // Configure the plugin registry from [plugins] before any UI consumes it, and
