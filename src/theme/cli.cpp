@@ -2,7 +2,6 @@
 
 #include "cli/parse.h"
 #include "cli/schema_theme.h"
-#include "config/config_export.h"
 #include "config/config_service.h"
 #include "core/files/resource_paths.h"
 #include "core/toml.h" // IWYU pragma: keep

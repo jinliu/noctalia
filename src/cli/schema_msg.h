@@ -131,11 +131,11 @@ namespace noctalia::cli {
       Positional{"text", {}, {}, true, false, false},
   };
   inline constexpr std::array kMsgConfigGetPositionals{
-      Positional{"path", "TOML node path. E.g., 'theme.shell_mode'", {}, true, false, false},
+      Positional{"path", "Dotted config path (e.g. theme.shell_mode)", {}, true, false, false},
   };
   inline constexpr std::array kMsgConfigSetPositionals{
-      Positional{"path", "TOML node path. E.g., 'theme.shell_mode'", {}, true, false, false},
-      Positional{"value", "Node value. String value must be quoted. E.g., \"'light'\"", {}, true, false, false},
+      Positional{"path", "Dotted config path (e.g. theme.shell_mode)", {}, true, false, false},
+      Positional{"value", "TOML value; quote strings (e.g. \"'light'\")", {}, true, false, false},
   };
   inline constexpr std::array kMsgEffectsProfileSetPositionals{
       Positional{"kind", {}, kMsgEffectsProfileSetKindChoices, true, false, false},

@@ -3,7 +3,6 @@
 #include "application_internal.h"
 #include "compositors/compositor_detect.h"
 #include "compositors/umbriel/umbriel_audio_provider.h"
-#include "config/config_export.h"
 #include "config/config_types.h"
 #include "core/build_info.h"
 #include "core/deferred_call.h"

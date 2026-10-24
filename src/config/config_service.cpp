@@ -1941,7 +1941,7 @@ void ConfigService::registerIpc(IpcService& ipc) {
   ipc.bind(noctalia::cli::msg::configSet, [this](const std::string& args) -> std::string {
     auto tokens = StringUtils::splitShellWords(args);
     if (!tokens || tokens->size() < 2) {
-      return "error: expected exactly two arguments: <path> <value>\n";
+      return "error: expected arguments: <path> <value>\n";
     }
     const std::string path = (*tokens)[0];
     const std::string value = StringUtils::trim(args.substr(path.size()));
@@ -1952,7 +1952,7 @@ void ConfigService::registerIpc(IpcService& ipc) {
     try {
       delta = toml::parse(deltaString);
     } catch (const toml::parse_error& e) {
-      return std::string("error: invalid TOML string: ") + deltaString + "\n";
+      return std::format("error: invalid TOML value: {}: {}\n", deltaString, e.description());
     }
     deepMerge(candidateOverrides, delta);
 
@@ -1974,7 +1974,9 @@ void ConfigService::registerIpc(IpcService& ipc) {
       return oss.str();
     }
     if (!commitOverrideTable(candidateOverrides, nullptr)) {
-      return std::string("error: ") + m_lastMutationError + "\n";
+      return std::format(
+          "error: {}\n", m_lastMutationError.empty() ? "failed to write config overrides" : m_lastMutationError
+      );
     }
     return "ok\n";
   });
