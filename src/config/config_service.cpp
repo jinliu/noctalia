@@ -1555,6 +1555,7 @@ void ConfigService::loadAll() {
     m_monitorWallpaperPaths.clear();
     updateLegacyConfigIssues({});
     setConfigParseError(m_overridesParseError);
+    m_configTable = std::make_shared<const toml::table>(config_export::serialize(m_config));
     refreshIncludeWatches();
     return;
   }
