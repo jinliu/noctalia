@@ -217,6 +217,7 @@ void DesktopClockWidget::create() {
       .out = &m_label,
       .fontSize = clockFontSize(contentScale()),
       .fontWeight = FontWeight::Bold,
+      .fontFeatures = "tnum=1",
       .color = m_color,
   });
   m_digitalRoot->addChild(std::move(label));
