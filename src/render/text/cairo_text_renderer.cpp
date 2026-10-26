@@ -371,6 +371,7 @@ void CairoTextRenderer::maybeSyncFontConfig() {
 PangoFontDescription* CairoTextRenderer::newFontDescription(const TextFont& font, float rasterSize) const {
   PangoFontDescription* desc = pango_font_description_new();
   pango_font_description_set_family(desc, font.family.empty() ? m_fontFamily.c_str() : font.family.c_str());
+  pango_font_description_set_features(desc, font.features.c_str());
   pango_font_description_set_weight(desc, static_cast<PangoWeight>(font.weight));
   pango_font_description_set_absolute_size(desc, static_cast<double>(rasterSize) * PANGO_SCALE);
   return desc;

@@ -35,6 +35,7 @@ enum class FontWeight : int {
 struct TextFont {
   FontWeight weight = FontWeight::Normal;
   std::string family;
+  std::string features;
 
   bool operator==(const TextFont&) const = default;
 };
