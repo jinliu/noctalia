@@ -410,7 +410,8 @@ PangoLayout* CairoTextRenderer::buildLayout(
   // wrap never reaches it in practice.
   constexpr int kHardMaxLines = 500;
   if (!font.features.empty() || maxWidthPxScaled > 0.0F) {
-    PangoAttrList* attrs = pango_attr_list_new();
+    PangoAttrList* existingAttrs = pango_layout_get_attributes(layout);
+    PangoAttrList* attrs = existingAttrs != nullptr ? pango_attr_list_copy(existingAttrs) : pango_attr_list_new();
     if (!font.features.empty()) {
       PangoAttribute* featureAttr = pango_attr_font_features_new(font.features.c_str());
       featureAttr->start_index = 0;
