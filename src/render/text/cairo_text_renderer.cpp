@@ -371,7 +371,6 @@ void CairoTextRenderer::maybeSyncFontConfig() {
 PangoFontDescription* CairoTextRenderer::newFontDescription(const TextFont& font, float rasterSize) const {
   PangoFontDescription* desc = pango_font_description_new();
   pango_font_description_set_family(desc, font.family.empty() ? m_fontFamily.c_str() : font.family.c_str());
-  pango_font_description_set_features(desc, font.features.c_str());
   pango_font_description_set_weight(desc, static_cast<PangoWeight>(font.weight));
   pango_font_description_set_absolute_size(desc, static_cast<double>(rasterSize) * PANGO_SCALE);
   return desc;
@@ -410,16 +409,26 @@ PangoLayout* CairoTextRenderer::buildLayout(
   // blow up memory / GL textures. Higher than any real UI needs, so unlimited
   // wrap never reaches it in practice.
   constexpr int kHardMaxLines = 500;
-  if (maxWidthPxScaled > 0.0F) {
-    // Avoid Pango inserting hyphens at intra-word line breaks (looks like stray "-" in wrapped UI text).
+  if (!font.features.empty() || maxWidthPxScaled > 0.0F) {
     PangoAttrList* attrs = pango_attr_list_new();
-    PangoAttribute* hyphens = pango_attr_insert_hyphens_new(FALSE);
-    hyphens->start_index = 0;
-    hyphens->end_index = PANGO_ATTR_INDEX_TO_TEXT_END;
-    pango_attr_list_insert(attrs, hyphens);
+    if (!font.features.empty()) {
+      PangoAttribute* featureAttr = pango_attr_font_features_new(font.features.c_str());
+      featureAttr->start_index = 0;
+      featureAttr->end_index = PANGO_ATTR_INDEX_TO_TEXT_END;
+      pango_attr_list_insert(attrs, featureAttr);
+    }
+    if (maxWidthPxScaled > 0.0F) {
+      // Avoid Pango inserting hyphens at intra-word line breaks (looks like stray "-" in wrapped UI text).
+      PangoAttribute* hyphens = pango_attr_insert_hyphens_new(FALSE);
+      hyphens->start_index = 0;
+      hyphens->end_index = PANGO_ATTR_INDEX_TO_TEXT_END;
+      pango_attr_list_insert(attrs, hyphens);
+    }
     pango_layout_set_attributes(layout, attrs);
     pango_attr_list_unref(attrs);
+  }
 
+  if (maxWidthPxScaled > 0.0F) {
     const int lineBudget = maxLines > 0 ? std::min(maxLines, kHardMaxLines) : kHardMaxLines;
     pango_layout_set_width(layout, static_cast<int>(maxWidthPxScaled * PANGO_SCALE));
     pango_layout_set_wrap(layout, PANGO_WRAP_WORD_CHAR);
