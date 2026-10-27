@@ -50,6 +50,7 @@ namespace {
   std::size_t hashFont(const TextFont& font) {
     std::size_t seed = std::hash<std::string>{}(font.family);
     hashCombine(seed, std::hash<int>{}(static_cast<int>(font.weight)));
+    hashCombine(seed, std::hash<std::string>{}(font.features));
     return seed;
   }
 
