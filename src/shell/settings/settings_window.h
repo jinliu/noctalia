@@ -46,9 +46,11 @@ class FileDialogPresenter;
 class Flex;
 class GlyphPickerDialogPresenter;
 class IdleManager;
+class IdleInhibitor;
 class Input;
 class Label;
 class RenderContext;
+class ScreenSaverService;
 class ThumbnailService;
 class UPowerService;
 class WaylandConnection;
@@ -79,7 +81,8 @@ public:
 
   void initialize(
       WaylandConnection& wayland, ConfigService* config, RenderContext* renderContext, DependencyService* dependencies,
-      UPowerService* upower, IdleManager* idleManager, CompositorPlatform* platform, AccountsService* accounts = nullptr
+      UPowerService* upower, IdleManager* idleManager, IdleInhibitor* idleInhibitor, CompositorPlatform* platform,
+      AccountsService* accounts = nullptr
   );
 
   void open(std::string context = "");
@@ -119,6 +122,7 @@ public:
     m_pluginRecommendations = recommendations;
   }
   void setPluginManager(scripting::PluginManager* manager) { m_pluginManager = manager; }
+  void setScreenSaverService(ScreenSaverService* service) { m_screenSaverService = service; }
   void setSyncGreeterAppearance(std::function<void()> callback) { m_syncGreeterAppearance = std::move(callback); }
   void setResetLauncherUsage(std::function<void()> callback) { m_resetLauncherUsage = std::move(callback); }
   void setResetScreenTime(std::function<void()> callback) { m_resetScreenTime = std::move(callback); }
@@ -256,6 +260,8 @@ private:
   WaylandConnection* m_wayland = nullptr;
   CompositorPlatform* m_platform = nullptr;
   IdleManager* m_idleManager = nullptr;
+  IdleInhibitor* m_idleInhibitor = nullptr;
+  ScreenSaverService* m_screenSaverService = nullptr;
   ConfigService* m_config = nullptr;
   scripting::PluginManager* m_pluginManager = nullptr;
   scripting::PluginRecommendations* m_pluginRecommendations = nullptr;

@@ -112,7 +112,7 @@ void Application::initUiRenderSurfacesAndSettings() {
   m_backdrop.initialize(m_wayland, &m_configService, &m_sharedTextureCache, &m_glShared);
   m_settingsWindow.initialize(
       m_wayland, &m_configService, &m_renderContext, &m_dependencyService, m_upowerService.get(), &m_idleManager,
-      &m_compositorPlatform, m_accountsService.get()
+      &m_idleInhibitor, &m_compositorPlatform, m_accountsService.get()
   );
   m_settingsWindow.setPluginManager(&m_pluginManager);
   m_settingsWindow.setPluginRecommendations(&m_pluginRecommendations);
@@ -827,6 +827,7 @@ void Application::initNotificationAndOsd() {
       });
       m_idleManager.setScreenSaverInhibitLocks(m_screenSaverService->inhibitLocks());
       m_pluginIdleWatches.setScreenSaverInhibited(m_screenSaverService->inhibitLocks() > 0);
+      m_settingsWindow.setScreenSaverService(m_screenSaverService.get());
     } else {
       m_screenSaverService.reset();
     }

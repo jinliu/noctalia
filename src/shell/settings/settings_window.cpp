@@ -11,7 +11,9 @@
 #include "core/log.h"
 #include "core/scoped_timer.h"
 #include "core/ui_phase.h"
+#include "dbus/idle/screensaver_service.h"
 #include "i18n/i18n.h"
+#include "idle/idle_inhibitor.h"
 #include "idle/idle_manager.h"
 #include "render/core/async_texture_cache.h"
 #include "render/render_context.h"
@@ -40,6 +42,7 @@
 #include <linux/input-event-codes.h>
 #include <numbers>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -197,11 +200,13 @@ void SettingsWindow::setCalendarService(CalendarService* service) {
 
 void SettingsWindow::initialize(
     WaylandConnection& wayland, ConfigService* config, RenderContext* renderContext, DependencyService* dependencies,
-    UPowerService* upower, IdleManager* idleManager, CompositorPlatform* platform, AccountsService* accounts
+    UPowerService* upower, IdleManager* idleManager, IdleInhibitor* idleInhibitor, CompositorPlatform* platform,
+    AccountsService* accounts
 ) {
   m_wayland = &wayland;
   m_platform = platform;
   m_idleManager = idleManager;
+  m_idleInhibitor = idleInhibitor;
   m_config = config;
   m_renderContext = renderContext;
   m_dependencies = dependencies;
@@ -1257,6 +1262,39 @@ void SettingsWindow::invalidatePluginSourceCache(const std::string& sourceName) 
 
 void SettingsWindow::refreshIdleLiveStatusText() {
   if (m_idleLiveStatusLabel == nullptr) {
+    return;
+  }
+
+  if (m_screenSaverService != nullptr && m_screenSaverService->inhibitLocks() > 0) {
+    std::ostringstream result;
+    result << i18n::tr("settings.idle.live-status.inhibited") + ": ";
+    int inhibitorCount = 0;
+
+    if (m_idleInhibitor != nullptr && m_idleInhibitor->enabled()) {
+      inhibitorCount++;
+      result << i18n::tr("settings.idle.live-status.inhibit-reason-caffeine");
+    }
+
+    for (const auto& [app, reason] : m_screenSaverService->inhibitorList()) {
+      if (inhibitorCount > 0) {
+        result << ", ";
+      }
+      inhibitorCount++;
+      result << app;
+      if (!reason.empty()) {
+        result << " (" << reason << ")";
+      }
+    }
+
+    if (inhibitorCount < m_screenSaverService->inhibitLocks()) {
+      if (inhibitorCount > 0) {
+        result << ", ";
+      }
+      result << i18n::tr("settings.idle.live-status.inhibit-reason-external");
+    }
+
+    m_idleLiveStatusLabel->setColor(colorSpecFromRole(ColorRole::OnSurfaceVariant));
+    m_idleLiveStatusLabel->setText(result.str());
     return;
   }
 

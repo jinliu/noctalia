@@ -1405,7 +1405,10 @@
       "live-status": {
         "active": "Active",
         "idle-for-one": "Idle for 1 second",
-        "idle-for-seconds": "Idle for {seconds} seconds"
+        "idle-for-seconds": "Idle for {seconds} seconds",
+        "inhibited": "Inhibited",
+        "inhibit-reason-caffeine": "Caffeine",
+        "inhibit-reason-external": "external source"
       }
     },
     "navigation": {
