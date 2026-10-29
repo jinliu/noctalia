@@ -42,7 +42,6 @@
 #include <linux/input-event-codes.h>
 #include <numbers>
 #include <optional>
-#include <sstream>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -1266,35 +1265,33 @@ void SettingsWindow::refreshIdleLiveStatusText() {
   }
 
   if (m_screenSaverService != nullptr && m_screenSaverService->inhibitLocks() > 0) {
-    std::ostringstream result;
-    result << i18n::tr("settings.idle.live-status.inhibited") + ": ";
-    int inhibitorCount = 0;
+    std::string inhibitors;
+    std::int64_t inhibitorCount = 0;
+    const auto append = [&inhibitors, &inhibitorCount](std::string_view entry) {
+      if (inhibitorCount > 0) {
+        inhibitors += ", ";
+      }
+      inhibitors += entry;
+      ++inhibitorCount;
+    };
 
     if (m_idleInhibitor != nullptr && m_idleInhibitor->enabled()) {
-      inhibitorCount++;
-      result << i18n::tr("settings.idle.live-status.inhibit-reason-caffeine");
+      append(i18n::tr("settings.idle.live-status.inhibit-reason-caffeine"));
     }
 
     for (const auto& [app, reason] : m_screenSaverService->inhibitorList()) {
-      if (inhibitorCount > 0) {
-        result << ", ";
-      }
-      inhibitorCount++;
-      result << app;
+      append(app);
       if (!reason.empty()) {
-        result << " (" << reason << ")";
+        inhibitors.append(" (").append(reason).append(")");
       }
     }
 
     if (inhibitorCount < m_screenSaverService->inhibitLocks()) {
-      if (inhibitorCount > 0) {
-        result << ", ";
-      }
-      result << i18n::tr("settings.idle.live-status.inhibit-reason-external");
+      append(i18n::tr("settings.idle.live-status.inhibit-reason-external"));
     }
 
     m_idleLiveStatusLabel->setColor(colorSpecFromRole(ColorRole::OnSurfaceVariant));
-    m_idleLiveStatusLabel->setText(result.str());
+    m_idleLiveStatusLabel->setText(i18n::tr("settings.idle.live-status.inhibited", "inhibitors", inhibitors));
     return;
   }
 
